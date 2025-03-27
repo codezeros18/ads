@@ -1,1 +1,0 @@
-// Lintang Tony
