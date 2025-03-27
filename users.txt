@@ -1,2 +1,2 @@
-1 | lintang | ganteng | lintang@gmail.com
-2 | nanda | valeri | nanda@gmail.com
+1 | lintang | lintang | lintang@gmail.com
+2 | lintang | lintang | nanda@gmail.com

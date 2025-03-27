@@ -58,6 +58,9 @@ void registerUser(const char *filename) {
         return;
     }
 
+    printf("\n=====================================\n");
+    printf("           User Registration         \n");
+    printf("=====================================\n");
     printf("Enter Username: ");
     scanf(" %99s", newUser->username);
     printf("Enter Password: ");
@@ -69,7 +72,7 @@ void registerUser(const char *filename) {
     fprintf(file, "%d | %s | %s | %s\n", newUser->id, newUser->username, newUser->password, newUser->email);
     fclose(file);
 
-    printf("User registered successfully! ID: %d\n", newUser->id);
+    printf("\n✅User registered successfully! ID: %d\n", newUser->id);
     free(newUser); // Free allocated memory
 }
 
@@ -82,6 +85,9 @@ int loginUser(const char *filename) {
     }
 
     char username[MAX_STR], password[MAX_STR];
+    printf("\n=====================================\n");
+    printf("              Login                  \n");
+    printf("=====================================\n");
     printf("Enter Username: ");
     scanf(" %99s", username);
     printf("Enter Password: ");
@@ -97,7 +103,7 @@ int loginUser(const char *filename) {
                   userArray[userCount].password, userArray[userCount].email) != EOF) {
         if (strcmp(userArray[userCount].username, username) == 0 &&
             strcmp(userArray[userCount].password, password) == 0) {
-            printf("Login Successful! Welcome, %s (ID: %d)\n", userArray[userCount].username, userArray[userCount].id);
+            printf("\n✅Login Successful! Welcome, %s (ID: %d)\n", userArray[userCount].username, userArray[userCount].id);
             fclose(file);
             return userArray[userCount].id;  // Return the logged-in user ID
         }
@@ -105,7 +111,7 @@ int loginUser(const char *filename) {
     }
 
     fclose(file);
-    printf("Invalid username or password!\n");
+    printf("\n❌ Invalid login. Please try again.\n");
     return -1;
 }
 
@@ -136,7 +142,14 @@ void createPost(const char *filename, int userId) {
     newPost->userId = userId;
 
     int typeChoice;
-    printf("Choose Post Type:\n1. Picture\n2. Video\nEnter choice: ");
+    printf("\n=====================================\n");
+    printf("             Create Post             \n");
+    printf("=====================================\n");
+    printf(" Choose Post Type:\n");
+    printf(" 1. Picture 📷\n");
+    printf(" 2. Video 🎥\n");
+    printf("=====================================\n");
+    printf("> ");
     
     if (scanf("%d", &typeChoice) != 1) {
         printf("Invalid input!\n");
@@ -173,7 +186,7 @@ void createPost(const char *filename, int userId) {
     fprintf(file, "%d | %d | %s | %s | %s\n", newPost->postId, newPost->userId, newPost->title, newPost->content, newPost->type);
     fclose(file);
 
-    printf("Post created successfully! Post ID: %d\n", newPost->postId);
+    printf("\n✅ Post created successfully! Post ID: %d\n", newPost->postId);
     free(newPost);
 }
 
@@ -187,21 +200,25 @@ void viewPosts(const char *filename, int userId) {
 
     FILE *file = fopen(filename, "r");
     if (!file) {
-        printf("No posts found!\n");
+        printf("❌ No posts found!\n");
         return;
     }
 
     Post postArray[MAX_POSTS];
     int postCount = 0;
 
-    printf("\n=== Your Posts ===\n");
+    printf("\n=====================================\n");
+    printf("              Your Posts             \n");
+    printf("=====================================\n");
     while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^\n]\n", &postArray[postCount].postId, &postArray[postCount].userId,
-                  postArray[postCount].title, postArray[postCount].content, postArray[postCount].type) != EOF) {
-        if (postArray[postCount].userId == userId) {
-            printf("Post ID: %d\nTitle: %s\nContent: %s\nType: %s\n\n",
-                   postArray[postCount].postId, postArray[postCount].title,
-                   postArray[postCount].content, postArray[postCount].type);
-        }
+                    postArray[postCount].title, postArray[postCount].content, postArray[postCount].type) != EOF) {
+                    if (postArray[postCount].userId == userId) {
+                        printf(" 🆔 ID: %d\n", postArray[postCount].postId);
+                        printf(" 📌 Title: %s\n", postArray[postCount].title);
+                        printf(" 🎞️ Type: %s\n", postArray[postCount].type);
+                        printf(" ✏️ Content: %s\n", postArray[postCount].content);
+                        printf("-------------------------------------\n");
+                    }
         postCount++;
     }
 
@@ -221,8 +238,14 @@ int main() {
 
     while (1) {
         if (userId == -1) {
-            printf("\n=== Home ===\n");
-            printf("1. Register\n2. Login\n3. Exit\nChoose an option: ");
+            printf("\n=====================================\n");
+            printf("              Home Menu              \n");
+            printf("=====================================\n");
+            printf(" 1. Register\n");
+            printf(" 2. Login\n");
+            printf(" 3. Exit\n");
+            printf("=====================================\n");
+            printf("> ");
             scanf("%d", &choice);
             
             // Flush input buffer
