@@ -13,7 +13,7 @@ typedef struct User {
 } User;
 
 typedef struct Post {
-    int id, userId;
+    int id, userId, likes;
     char title[MAX_STR], content[MAX_STR], type[MAX_STR];
     struct Post *next;
 } Post;
@@ -22,11 +22,13 @@ User *loadUsers(), *registerUser(User *head), *loginUser(User *head, int *userId
 Post *loadPosts(), *createPost(Post *head, int userId);
 void saveUsers(User *head), savePosts(Post *head), viewPosts(Post *head, int userId);
 void freeUsers(User *head), freePosts(Post *head);
+Post *deletePost(Post *head, int postId);  // Function to delete a post
+void likePost(Post *head, int postId);     // Function to like a post
 
 int main() {
     User *users = loadUsers();
     Post *posts = loadPosts();
-    int userId = -1, choice;
+    int userId = -1, choice, postId;
 
     while (1) {
         if (userId == -1) {
@@ -43,13 +45,59 @@ int main() {
             else if (choice == 2) { users = loginUser(users, &userId); }
             else { saveUsers(users); savePosts(posts); freeUsers(users); freePosts(posts); return 0; }
         } else {
-            printf("\n1. Create Post\n2. View Posts\n3. Logout\n> ");
+            printf("\n1. Create Post\n2. View Posts\n3. Delete Post\n4. Like Post\n5. Logout\n> ");
             scanf("%d", &choice); getchar();
             if (choice == 1) { posts = createPost(posts, userId); savePosts(posts); }
             else if (choice == 2) { viewPosts(posts, userId); }
+            else if (choice == 3) {
+                printf("Enter Post ID to delete: ");
+                scanf("%d", &postId); getchar();
+                posts = deletePost(posts, postId);
+                savePosts(posts);
+            }
+            else if (choice == 4) {
+                printf("Enter Post ID to like: ");
+                scanf("%d", &postId); getchar();
+                likePost(posts, postId);
+                savePosts(posts);
+            }
             else { userId = -1; printf("Logged out!\n"); }
         }
     }
+}
+
+Post *deletePost(Post *head, int postId) {
+    Post *prev = NULL, *cur = head;
+
+    while (cur) {
+        if (cur->id == postId) {
+            if (prev) prev->next = cur->next; // Bypass the node
+            else head = cur->next; // If the post to delete is the head
+            free(cur);
+            printf("\n✅ Post ID %d deleted successfully!\n", postId);
+            return head;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+
+    printf("\n❌ Post ID %d not found!\n", postId);
+    return head;
+}
+
+void likePost(Post *head, int postId) {
+    Post *cur = head;
+
+    while (cur) {
+        if (cur->id == postId) {
+            cur->likes++;
+            printf("\n✅ Post ID %d liked! Total Likes: %d\n", postId, cur->likes);
+            return;
+        }
+        cur = cur->next;
+    }
+
+    printf("\n❌ Post ID %d not found!\n", postId);
 }
 
 User *registerUser(User *head) {
@@ -102,6 +150,7 @@ Post *createPost(Post *head, int userId) {
     if (!newPost) return head;
 
     newPost->userId = userId;
+    newPost->likes = 0;
 
     printf("\n=====================================\n");
     printf("             Create Post             \n");
@@ -111,7 +160,7 @@ Post *createPost(Post *head, int userId) {
     printf(" 2. Video 🎥\n");
     printf("=====================================\n");
     printf("> ");
-    
+
     int choice;
     scanf("%d", &choice); getchar();
     strcpy(newPost->type, (choice == 1) ? "Picture" : "Video");
@@ -130,7 +179,6 @@ Post *createPost(Post *head, int userId) {
     return newPost;
 }
 
-
 void viewPosts(Post *head, int userId) {
     printf("\n=====================================\n");
     printf("              Your Posts             \n");
@@ -142,6 +190,7 @@ void viewPosts(Post *head, int userId) {
             printf(" 🆔 ID: %d\n", cur->id);
             printf(" 📌 Title: %s\n", cur->title);
             printf(" 🎞️ Type: %s\n", cur->type);
+            printf(" 👍 Likes: %d\n", cur->likes);
             printf(" ✏️ Content: %s\n", cur->content);
             printf("-------------------------------------\n");
             found = 1;
@@ -152,7 +201,6 @@ void viewPosts(Post *head, int userId) {
         printf("❌ No posts found!\n");
     }
 }
-
 
 void saveUsers(User *head) {
     FILE *file = fopen(USER_FILE, "w");
@@ -180,7 +228,7 @@ User *loadUsers() {
 void savePosts(Post *head) {
     FILE *file = fopen(POST_FILE, "w");
     for (Post *cur = head; cur; cur = cur->next)
-        fprintf(file, "%d | %d | %s | %s | %s\n", cur->id, cur->userId, cur->title, cur->content, cur->type);
+        fprintf(file, "%d | %d | %s | %s | %s | %d\n", cur->id, cur->userId, cur->title, cur->content, cur->type, cur->likes);
     fclose(file);
 }
 
@@ -190,7 +238,7 @@ Post *loadPosts() {
     Post *head = NULL;
     while (!feof(file)) {
         Post *newPost = malloc(sizeof(Post));
-        if (fscanf(file, "%d | %d | %[^|] | %[^|] | %[^\n]\n", &newPost->id, &newPost->userId, newPost->title, newPost->content, newPost->type) != 5) {
+        if (fscanf(file, "%d | %d | %[^|] | %[^|] | %[^|] | %d\n", &newPost->id, &newPost->userId, newPost->title, newPost->content, newPost->type, &newPost->likes) != 6) {
             free(newPost); break;
         }
         newPost->next = head;

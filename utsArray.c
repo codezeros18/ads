@@ -18,273 +18,113 @@ typedef struct {
     int userId;
     char title[MAX_STR];
     char content[MAX_STR];
-    char type[MAX_STR];  // "Picture" or "Video"
+    char type[MAX_STR]; // "Picture" or "Video"
+    int likes;
 } Post;
 
-// Function to get the last User ID from file
-int getLastUserID(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) return 0;
+// Function to delete a post
+void deletePost(Post posts[], int *postCount, int userId) {
+    int postId, i, found = 0;
+    printf("Enter Post ID to delete: ");
+    scanf("%d", &postId);
 
-    int lastID = 0;
-    while (fscanf(file, "%d | %*s | %*s | %*s\n", &lastID) != EOF);
-    fclose(file);
-    return lastID;
-}
-
-// Function to get the last Post ID from file
-int getLastPostID(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) return 0;
-
-    int lastID = 0;
-    while (fscanf(file, "%d | %*d | %*s | %*s | %*s\n", &lastID) != EOF);
-    fclose(file);
-    return lastID;
-}
-
-// Function to register a new user
-void registerUser(const char *filename) {
-    FILE *file = fopen(filename, "a");
-    if (!file) {
-        printf("Error opening file!\n");
-        return;
-    }
-
-    User *newUser = (User *)malloc(sizeof(User));
-    if (!newUser) {
-        printf("Memory allocation failed!\n");
-        fclose(file);
-        return;
-    }
-
-    printf("\n=====================================\n");
-    printf("           User Registration         \n");
-    printf("=====================================\n");
-    printf("Enter Username: ");
-    scanf(" %99s", newUser->username);
-    printf("Enter Password: ");
-    scanf(" %99s", newUser->password);
-    printf("Enter Email: ");
-    scanf(" %99s", newUser->email);
-
-    newUser->id = getLastUserID(filename) + 1;
-    fprintf(file, "%d | %s | %s | %s\n", newUser->id, newUser->username, newUser->password, newUser->email);
-    fclose(file);
-
-    printf("\n✅User registered successfully! ID: %d\n", newUser->id);
-    free(newUser); // Free allocated memory
-}
-
-// Function to login a user
-int loginUser(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        printf("No users found!\n");
-        return -1;
-    }
-
-    char username[MAX_STR], password[MAX_STR];
-    printf("\n=====================================\n");
-    printf("              Login                  \n");
-    printf("=====================================\n");
-    printf("Enter Username: ");
-    scanf(" %99s", username);
-    printf("Enter Password: ");
-    scanf(" %99s", password);
-    
-    // Flush input buffer
-    while (getchar() != '\n');  
-
-    User userArray[MAX_USERS];
-    int userCount = 0;
-
-    while (fscanf(file, "%d | %99s | %99s | %99s\n", &userArray[userCount].id, userArray[userCount].username,
-                  userArray[userCount].password, userArray[userCount].email) != EOF) {
-        if (strcmp(userArray[userCount].username, username) == 0 &&
-            strcmp(userArray[userCount].password, password) == 0) {
-            printf("\n✅Login Successful! Welcome, %s (ID: %d)\n", userArray[userCount].username, userArray[userCount].id);
-            fclose(file);
-            return userArray[userCount].id;  // Return the logged-in user ID
+    for (i = 0; i < *postCount; i++) {
+        if (posts[i].postId == postId && posts[i].userId == userId) {
+            found = 1;
+            for (int j = i; j < *postCount - 1; j++) {
+                posts[j] = posts[j + 1];
+            }
+            (*postCount)--;
+            printf("\n✅ Post deleted successfully!\n");
+            return;
         }
-        userCount++;
     }
-
-    fclose(file);
-    printf("\n❌ Invalid login. Please try again.\n");
-    return -1;
+    if (!found) {
+        printf("\n❌ Post not found or not owned by you.\n");
+    }
 }
 
+// Function to like a post
+void likePost(Post posts[], int postCount) {
+    int postId, i, found = 0;
+    printf("Enter Post ID to like: ");
+    scanf("%d", &postId);
+
+    for (i = 0; i < postCount; i++) {
+        if (posts[i].postId == postId) {
+            posts[i].likes++;
+            printf("\n❤️ Post liked! Total likes: %d\n", posts[i].likes);
+            return;
+        }
+    }
+    printf("\n❌ Post not found.\n");
+}
 
 // Function to create a new post
-// Function to create a new post
-
-void createPost(const char *filename, int userId) {
-    if (userId == -1) {
-        printf("You must be logged in to create a post.\n");
+void createPost(Post posts[], int *postCount, int userId) {
+    if (*postCount >= MAX_POSTS) {
+        printf("\n❌ Post limit reached.\n");
         return;
     }
 
-    FILE *file = fopen(filename, "a");
-    if (!file) {
-        printf("Error opening file!\n");
-        return;
-    }
-
-    Post *newPost = (Post *)malloc(sizeof(Post));
-    if (!newPost) {
-        printf("Memory allocation failed!\n");
-        fclose(file);
-        return;
-    }
-
-    newPost->postId = getLastPostID(filename) + 1;
-    newPost->userId = userId;
-
-    int typeChoice;
-    printf("\n=====================================\n");
-    printf("             Create Post             \n");
-    printf("=====================================\n");
-    printf(" Choose Post Type:\n");
-    printf(" 1. Picture 📷\n");
-    printf(" 2. Video 🎥\n");
-    printf("=====================================\n");
-    printf("> ");
-    
-    if (scanf("%d", &typeChoice) != 1) {
-        printf("Invalid input!\n");
-        free(newPost);
-        fclose(file);
-        return;
-    }
-
-    // **Flush input buffer to prevent fgets issues**
-    while (getchar() != '\n'); 
-
-    if (typeChoice == 1) {
-        strcpy(newPost->type, "Picture");
-    } else if (typeChoice == 2) {
-        strcpy(newPost->type, "Video");
-    } else {
-        printf("Invalid choice!\n");
-        free(newPost);
-        fclose(file);
-        return;
-    }
+    posts[*postCount].postId = *postCount + 1;
+    posts[*postCount].userId = userId;
+    posts[*postCount].likes = 0;
 
     printf("Enter Post Title: ");
-    fgets(newPost->title, sizeof(newPost->title), stdin);
-    newPost->title[strcspn(newPost->title, "\n")] = '\0';  // Remove newline
-
+    scanf(" %[^"]", posts[*postCount].title);
     printf("Enter Post Content: ");
-    fgets(newPost->content, sizeof(newPost->content), stdin);
-    newPost->content[strcspn(newPost->content, "\n")] = '\0';  // Remove newline
+    scanf(" %[^"]", posts[*postCount].content);
 
-    // Append file extension
-    strcat(newPost->content, (typeChoice == 1) ? ".png" : ".mp4");
+    printf("Choose Post Type (Picture/Video): ");
+    scanf(" %s", posts[*postCount].type);
 
-    fprintf(file, "%d | %d | %s | %s | %s\n", newPost->postId, newPost->userId, newPost->title, newPost->content, newPost->type);
-    fclose(file);
-
-    printf("\n✅ Post created successfully! Post ID: %d\n", newPost->postId);
-    free(newPost);
+    (*postCount)++;
+    printf("\n✅ Post created successfully!\n");
 }
 
-
-// Function to view all posts of the logged-in user
-void viewPosts(const char *filename, int userId) {
-    if (userId == -1) {
-        printf("You must be logged in to view posts.\n");
+// Function to view posts
+void viewPosts(Post posts[], int postCount) {
+    if (postCount == 0) {
+        printf("\n❌ No posts available.\n");
         return;
     }
 
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        printf("❌ No posts found!\n");
-        return;
+    for (int i = 0; i < postCount; i++) {
+        printf("\n🆔 ID: %d\n📌 Title: %s\n🎞️ Type: %s\n✏️ Content: %s\n❤️ Likes: %d\n",
+               posts[i].postId, posts[i].title, posts[i].type, posts[i].content, posts[i].likes);
+        printf("-----------------------------------\n");
     }
-
-    Post postArray[MAX_POSTS];
-    int postCount = 0;
-
-    printf("\n=====================================\n");
-    printf("              Your Posts             \n");
-    printf("=====================================\n");
-    while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^\n]\n", &postArray[postCount].postId, &postArray[postCount].userId,
-                    postArray[postCount].title, postArray[postCount].content, postArray[postCount].type) != EOF) {
-                    if (postArray[postCount].userId == userId) {
-                        printf(" 🆔 ID: %d\n", postArray[postCount].postId);
-                        printf(" 📌 Title: %s\n", postArray[postCount].title);
-                        printf(" 🎞️ Type: %s\n", postArray[postCount].type);
-                        printf(" ✏️ Content: %s\n", postArray[postCount].content);
-                        printf("-------------------------------------\n");
-                    }
-        postCount++;
-    }
-
-    fclose(file);
 }
-
-void logout(int *userId) {
-    printf("Logging out...\n");
-    *userId = -1;  // Reset user ID to indicate no user is logged in
-}
-
 
 // Main function
 int main() {
-    int choice;
-    int userId = -1;  // No user is logged in at the start
+    int choice, userId = 1, postCount = 0;
+    Post posts[MAX_POSTS];
 
     while (1) {
-        if (userId == -1) {
-            printf("\n=====================================\n");
-            printf("              Home Menu              \n");
-            printf("=====================================\n");
-            printf(" 1. Register\n");
-            printf(" 2. Login\n");
-            printf(" 3. Exit\n");
-            printf("=====================================\n");
-            printf("> ");
-            scanf("%d", &choice);
-            
-            // Flush input buffer
-            while (getchar() != '\n');
+        printf("\n=== Menu ===\n");
+        printf("1. Create Post\n2. View Posts\n3. Like Post\n4. Delete Post\n5. Exit\n> ");
+        scanf("%d", &choice);
 
-            switch (choice) {
-                case 1:
-                    registerUser("users.txt");
-                    break;
-                case 2:
-                    userId = loginUser("users.txt");
-                    break;
-                case 3:
-                    printf("Exiting...\n");
-                    return 0;
-                default:
-                    printf("Invalid choice! Try again.\n");
-            }
-        } else {
-            printf("\n=== User Menu ===\n");
-            printf("1. Create Post\n2. View Posts\n3. Log Out\nChoose an option: ");
-            scanf("%d", &choice);
-            
-            // Flush input buffer
-            while (getchar() != '\n');
-
-            switch (choice) {
-                case 1:
-                    createPost("posts.txt", userId);
-                    break;
-                case 2:
-                    viewPosts("posts.txt", userId);
-                    break;
-                case 3:
-                    logout(&userId);
-                    break;
-                default:
-                    printf("Invalid choice! Try again.\n");
-            }
+        switch (choice) {
+            case 1:
+                createPost(posts, &postCount, userId);
+                break;
+            case 2:
+                viewPosts(posts, postCount);
+                break;
+            case 3:
+                likePost(posts, postCount);
+                break;
+            case 4:
+                deletePost(posts, &postCount, userId);
+                break;
+            case 5:
+                printf("Exiting...\n");
+                return 0;
+            default:
+                printf("Invalid choice! Try again.\n");
         }
     }
 }
