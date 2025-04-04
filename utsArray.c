@@ -19,6 +19,7 @@ typedef struct {
     char title[MAX_STR];
     char content[MAX_STR];
     char type[MAX_STR];  // "Picture" or "Video"
+    int likes;
 } Post;
 
 // Function to get the last User ID from file
@@ -183,7 +184,7 @@ void createPost(const char *filename, int userId) {
     // Append file extension
     strcat(newPost->content, (typeChoice == 1) ? ".png" : ".mp4");
 
-    fprintf(file, "%d | %d | %s | %s | %s\n", newPost->postId, newPost->userId, newPost->title, newPost->content, newPost->type);
+    fprintf(file, "%d | %d | %s | %s | %s | %d\n", newPost->postId, newPost->userId, newPost->title, newPost->content, newPost->type, 0);
     fclose(file);
 
     printf("\n✅ Post created successfully! Post ID: %d\n", newPost->postId);
@@ -225,6 +226,91 @@ void viewPosts(const char *filename, int userId) {
     fclose(file);
 }
 
+void deletePost(Post posts[], int *postCount, int userId) {
+    int postId;
+    printf("Enter the Post ID to delete: ");
+    scanf("%d", &postId);
+
+    int found = 0;
+    for (int i = 0; i < *postCount; i++) {
+        if (posts[i].postId == postId && posts[i].userId == userId) {
+            // Shift all posts after i one step back
+            for (int j = i; j < *postCount - 1; j++) {
+                posts[j] = posts[j + 1];
+            }
+            (*postCount)--;
+            found = 1;
+            printf("🗑️ Post ID %d deleted successfully.\n", postId);
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("❌ Post not found or you don't have permission to delete it.\n");
+    }
+}
+
+void likePost(Post posts[], int postCount) {
+    int postId;
+    printf("Enter the Post ID to like: ");
+    scanf("%d", &postId);
+
+    int found = 0;
+    for (int i = 0; i < postCount; i++) {
+        if (posts[i].postId == postId) {
+            posts[i].likes++;
+            printf("👍 Post ID %d liked! Total Likes: %d\n", postId, posts[i].likes);
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("❌ Post not found.\n");
+    }
+}
+
+
+void savePostsToFile(const char *filename, Post posts[], int postCount) {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        printf("Error writing to file!\n");
+        return;
+    }
+
+    for (int i = 0; i < postCount; i++) {
+        fprintf(file, "%d | %d | %s | %s | %s | %d\n",
+                posts[i].postId, posts[i].userId, posts[i].title,
+                posts[i].content, posts[i].type, posts[i].likes);
+    }
+
+    fclose(file);
+}
+
+int loadPostsFromFile(const char *filename, Post posts[]) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Error opening posts file.\n");
+        return 0;
+    }
+
+    int count = 0;
+    while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^|] | %d\n",
+                  &posts[count].postId,
+                  &posts[count].userId,
+                  posts[count].title,
+                  posts[count].content,
+                  posts[count].type,
+                  &posts[count].likes) == 6) {
+        count++;
+    }
+
+    fclose(file);
+    return count;
+}
+
+
+
 void logout(int *userId) {
     printf("Logging out...\n");
     *userId = -1;  // Reset user ID to indicate no user is logged in
@@ -235,6 +321,9 @@ void logout(int *userId) {
 int main() {
     int choice;
     int userId = -1;  // No user is logged in at the start
+
+    Post posts[MAX_POSTS];  // Declare posts array
+    int postCount = 0;      // Initialize post count
 
     while (1) {
         if (userId == -1) {
@@ -266,7 +355,7 @@ int main() {
             }
         } else {
             printf("\n=== User Menu ===\n");
-            printf("1. Create Post\n2. View Posts\n3. Log Out\nChoose an option: ");
+            printf("1. Create Post\n2. View Posts\n3. Like Post\n4. Delete Post\n5. Logout\nChoose an option: ");
             scanf("%d", &choice);
             
             // Flush input buffer
@@ -275,11 +364,23 @@ int main() {
             switch (choice) {
                 case 1:
                     createPost("posts.txt", userId);
+                    // Reload posts from file to memory
+                    postCount = loadPostsFromFile("posts.txt", posts);
                     break;
                 case 2:
                     viewPosts("posts.txt", userId);
                     break;
                 case 3:
+                    postCount = loadPostsFromFile("posts.txt", posts);  // Load latest
+                    likePost(posts, postCount);
+                    savePostsToFile("posts.txt", posts, postCount);     // Save updated
+                    break;
+                case 4:
+                    postCount = loadPostsFromFile("posts.txt", posts);  // Load latest
+                    deletePost(posts, &postCount, userId);
+                    savePostsToFile("posts.txt", posts, postCount);     // Save updated
+                    break;
+                case 5:
                     logout(&userId);
                     break;
                 default:
