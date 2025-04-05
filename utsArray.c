@@ -211,19 +211,48 @@ void viewPosts(const char *filename, int userId) {
     printf("\n=====================================\n");
     printf("              Your Posts             \n");
     printf("=====================================\n");
-    while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^\n]\n", &postArray[postCount].postId, &postArray[postCount].userId,
-                    postArray[postCount].title, postArray[postCount].content, postArray[postCount].type) != EOF) {
-                    if (postArray[postCount].userId == userId) {
-                        printf(" 🆔 ID: %d\n", postArray[postCount].postId);
-                        printf(" 📌 Title: %s\n", postArray[postCount].title);
-                        printf(" 🎞️ Type: %s\n", postArray[postCount].type);
-                        printf(" ✏️ Content: %s\n", postArray[postCount].content);
-                        printf("-------------------------------------\n");
-                    }
+
+    // Load all posts from file
+    while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^|] | %d\n", &postArray[postCount].postId, &postArray[postCount].userId,
+                    postArray[postCount].title, postArray[postCount].content, postArray[postCount].type, &postArray[postCount].likes) != EOF) {
         postCount++;
     }
 
     fclose(file);
+
+    // Sort posts by likes
+    int choice;
+    printf("Sort by:\n");
+    printf("1. Newest\n");
+    printf("2. Likes\n");
+    printf("> ");
+    scanf("%d", &choice);
+
+    if (choice == 2) {
+        // Sort posts by likes
+        for (int i = 0; i < postCount - 1; i++) {
+            for (int j = i + 1; j < postCount; j++) {
+                if (postArray[i].likes < postArray[j].likes) {
+                    // Swap posts
+                    Post temp = postArray[i];
+                    postArray[i] = postArray[j];
+                    postArray[j] = temp;
+                }
+            }
+        }
+    }
+
+    // Display sorted posts
+    for (int i = 0; i < postCount; i++) {
+        if (postArray[i].userId == userId) {
+            printf(" 🆔 ID: %d\n", postArray[i].postId);
+            printf(" 📌 Title: %s\n", postArray[i].title);
+            printf(" 🎞️ Type: %s\n", postArray[i].type);
+            printf(" ✏️ Content: %s\n", postArray[i].content);
+            printf(" 👍 Likes: %d\n", postArray[i].likes);
+            printf("-------------------------------------\n");
+        }
+    }
 }
 
 void deletePost(Post posts[], int *postCount, int userId) {
