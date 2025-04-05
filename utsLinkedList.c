@@ -181,27 +181,90 @@ Post *createPost(Post *head, int userId) {
     return newPost;
 }
 
+Post *sortPostsByLikes(Post *head, int userId);
+void printSortedPosts(Post *head);
 
 void viewPosts(Post *head, int userId) {
     printf("\n=====================================\n");
     printf("              Your Posts             \n");
     printf("=====================================\n");
 
-    int found = 0;
-    for (Post *cur = head; cur; cur = cur->next) {
-        if (cur->userId == userId) {
-            printf(" 🆔 ID: %d\n", cur->id);
-            printf(" 📌 Title: %s\n", cur->title);
-            printf(" 👍 Likes: %d\n", cur->likes);
-            printf(" 🎞️ Type: %s\n", cur->type);
-            printf(" ✏️ Content: %s\n", cur->content);
-            printf("-------------------------------------\n");
-            found = 1;
+    int choice;
+    printf("Sort by:\n");
+    printf("1. Newest\n");
+    printf("2. Likes\n");
+    printf("> ");
+    scanf("%d", &choice);
+
+    if (choice == 2) {
+        // Sort by likes
+        Post *sortedHead = sortPostsByLikes(head, userId);
+        printSortedPosts(sortedHead);
+        freePosts(sortedHead);
+    } else {
+        // Default: newest
+        int found = 0;
+        for (Post *cur = head; cur; cur = cur->next) {
+            if (cur->userId == userId) {
+                printf(" 🆔 ID: %d\n", cur->id);
+                printf(" 📌 Title: %s\n", cur->title);
+                printf(" 👍 Likes: %d\n", cur->likes);
+                printf(" 🎞️ Type: %s\n", cur->type);
+                printf(" ✏️ Content: %s\n", cur->content);
+                printf("-------------------------------------\n");
+                found = 1;
+            }
         }
     }
+}
 
-    if (!found) {
-        printf("❌ No posts found!\n");
+Post *sortPostsByLikes(Post *head, int userId) {
+    Post *sortedHead = NULL;
+    Post *cur = head;
+
+    while (cur) {
+        if (cur->userId == userId) {
+            Post *newPost = malloc(sizeof(Post));
+            *newPost = *cur;
+            newPost->next = sortedHead;
+            sortedHead = newPost;
+        }
+        cur = cur->next;
+    }
+
+    // Sort by likes
+    Post *sortedCur = sortedHead;
+    while (sortedCur) {
+        Post *next = sortedCur->next;
+        while (next) {
+            if (sortedCur->likes < next->likes) {
+                // Swap likes
+                int temp = sortedCur->likes;
+                sortedCur->likes = next->likes;
+                next->likes = temp;
+            }
+            next = next->next;
+        }
+        sortedCur = sortedCur->next;
+    }
+
+    return sortedHead;
+}
+
+void printSortedPosts(Post *head) {
+    printf("\n=====================================\n");
+    printf("              Your Posts (Sorted by Likes)             \n");
+    printf("=====================================\n");
+
+    int found = 0;
+    for (Post *cur = head; cur; cur = cur->next) {
+        printf(" 🆔 ID: %d\n", cur->id);
+        printf(" 📌 Title: %s\n", cur->title);
+        printf(" 👍 Likes: %d\n", cur->likes);
+        printf(" 🎞️ Type: %s\n", cur->type);
+        printf(" ✏️ Content: %s\n", cur->content);
+        printf("-------------------------------------\n");
+        found = 1;
     }
 }
 
