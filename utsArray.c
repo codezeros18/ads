@@ -6,6 +6,10 @@
 #define MAX_POSTS 100
 #define MAX_STR 100
 
+#define MAX_COMMENTS 10
+#define MAX_NAME_LENGTH 50
+#define MAX_COMMENT_LENGTH 200
+
 typedef struct {
     int id;
     char username[MAX_STR];
@@ -21,6 +25,11 @@ typedef struct {
     char type[MAX_STR];  // "Picture" or "Video"
     int likes;
 } Post;
+
+typedef struct {
+    char username[MAX_NAME_LENGTH];
+    char comment[MAX_COMMENT_LENGTH];
+} Comment;
 
 // Function to get the last User ID from file
 int getLastUserID(const char *filename) {
@@ -270,6 +279,45 @@ void likePost(Post posts[], int postCount) {
     }
 }
 
+// function to comment on a post
+void displayPost() {
+    printf("📸 @naturelover: \"Enjoying the sunset 🌅 at Bali!\"\n");
+    printf("---------------------------------------------------\n");
+}
+
+void inputComment(Comment* c) {
+    printf("Enter your username: ");
+    fgets(c->username, MAX_NAME_LENGTH, stdin);
+    c->username[strcspn(c->username, "\n")] = 0;
+
+    printf("Enter your comment: ");
+    fgets(c->comment, MAX_COMMENT_LENGTH, stdin);
+    c->comment[strcspn(c->comment, "\n")] = 0;
+}
+
+void displayComments(Comment comments[], int count) {
+    printf("\n💬 Comment Section\n--------------------------\n");
+    for (int i = 0; i < count; i++) {
+        printf("@%s: %s\n", comments[i].username, comments[i].comment);
+    }
+}
+
+void collectComments(Comment comments[], int* total) {
+    char more = 'y';
+
+    while (*total < MAX_COMMENTS && (more == 'y' || more == 'Y')) {
+        printf("\nComment #%d\n", *total + 1);
+        inputComment(&comments[*total]);
+        (*total)++;
+
+        if (*total < MAX_COMMENTS) {
+            printf("Add another comment? (y/n): ");
+            scanf(" %c", &more);
+            getchar(); // clear newline
+        }
+    }
+}
+
 
 void savePostsToFile(const char *filename, Post posts[], int postCount) {
     FILE *file = fopen(filename, "w");
@@ -310,7 +358,6 @@ int loadPostsFromFile(const char *filename, Post posts[]) {
 }
 
 
-
 void logout(int *userId) {
     printf("Logging out...\n");
     *userId = -1;  // Reset user ID to indicate no user is logged in
@@ -324,6 +371,9 @@ int main() {
 
     Post posts[MAX_POSTS];  // Declare posts array
     int postCount = 0;      // Initialize post count
+
+    Comment comments[MAX_COMMENTS];  // Array untuk komentar
+    int totalComments = 0;
 
     while (1) {
         if (userId == -1) {
@@ -380,7 +430,12 @@ int main() {
                     deletePost(posts, &postCount, userId);
                     savePostsToFile("posts.txt", posts, postCount);     // Save updated
                     break;
-                case 5:
+                case 5: 
+                    displayPost(); // static post tampil
+                    collectComments(comments, &totalComments);
+                    displayComments(comments, totalComments);
+                    break;    
+                case 6:
                     logout(&userId);
                     break;
                 default:

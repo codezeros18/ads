@@ -6,6 +6,9 @@
 #define USER_FILE "users.txt"
 #define POST_FILE "posts.txt"
 
+#define MAX_NAME_LENGTH 50
+#define MAX_COMMENT_LENGTH 200
+
 typedef struct User {
     int id;
     char username[MAX_STR], password[MAX_STR], email[MAX_STR];
@@ -18,12 +21,22 @@ typedef struct Post {
     struct Post *next;
 } Post;
 
+typedef struct Comment {
+    char username[MAX_NAME_LENGTH];
+    char comment[MAX_COMMENT_LENGTH];
+    struct Comment* next;
+} Comment;
+
 User *loadUsers(), *registerUser(User *head), *loginUser(User *head, int *userId);
 Post *loadPosts(), *createPost(Post *head, int userId);
 void saveUsers(User *head), savePosts(Post *head), viewPosts(Post *head, int userId);
 void freeUsers(User *head), freePosts(Post *head);
 Post *deletePost(Post *head, int postId);  // Function to delete a post
 void likePost(Post *head, int postId);     // Function to like a post
+void displayPost();
+void collectComments(Comment** head);
+void displayComments(Comment* head);
+void freeComments(Comment* head);
 
 int main() {
     User *users = loadUsers();
@@ -63,6 +76,14 @@ int main() {
                 posts = deletePost(posts, postId);
                 savePosts(posts);
             }
+            else if (choice == 5) {
+                Comment* commentList = NULL;
+
+                displayPost();                      
+                collectComments(&commentList);      // input komentar
+                displayComments(commentList);       // tampilkan komentar
+                freeComments(commentList);          // bersihkan memori
+            }
             else { userId = -1; printf("Logged out!\n"); }
         }
     }
@@ -100,6 +121,67 @@ void likePost(Post *head, int postId) {
     }
 
     printf("\n❌ Post ID %d not found!\n", postId);
+}
+
+// function comment on a post
+void displayPost() {
+    printf("📸 @naturelover: \"Enjoying the sunset 🌅 at Bali!\"\n");
+    printf("---------------------------------------------------\n");
+}
+
+Comment* createComment() {
+    Comment* newComment = (Comment*)malloc(sizeof(Comment));
+    if (!newComment) {
+        printf("Memory allocation failed.\n");
+        exit(1);
+    }
+
+    printf("Enter your username: ");
+    fgets(newComment->username, MAX_NAME_LENGTH, stdin);
+    newComment->username[strcspn(newComment->username, "\n")] = 0;
+
+    printf("Enter your comment: ");
+    fgets(newComment->comment, MAX_COMMENT_LENGTH, stdin);
+    newComment->comment[strcspn(newComment->comment, "\n")] = 0;
+
+    newComment->next = NULL;
+    return newComment;
+}
+
+void collectComments(Comment** head) {
+    char more = 'y';
+    Comment* tail = NULL;
+
+    while (more == 'y' || more == 'Y') {
+        Comment* newComment = createComment();
+
+        if (*head == NULL) {
+            *head = newComment;
+        } else {
+            tail->next = newComment;
+        }
+        tail = newComment;
+
+        printf("Add another comment? (y/n): ");
+        scanf(" %c", &more);
+        getchar(); // clear newline
+    }
+}
+
+void displayComments(Comment* head) {
+    printf("\n💬 Comment Section\n--------------------------\n");
+    while (head != NULL) {
+        printf("@%s: %s\n", head->username, head->comment);
+        head = head->next;
+    }
+}
+
+void freeComments(Comment* head) {
+    while (head != NULL) {
+        Comment* temp = head;
+        head = head->next;
+        free(temp);
+    }
 }
 
 User *registerUser(User *head) {
