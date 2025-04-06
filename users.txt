@@ -1,3 +1,3 @@
-2 | marko | marko | marko@gmail.com
-1 | lintang   | lintang   | lintang@gmail.com
-2 | valeri  | valeri  | valeri@gmail.com
+3|marko|marko|marko@gmail.com
+2|valeri|valeri|valeri@gmail.com
+1|lintang|lintang|lintang@gmail.com

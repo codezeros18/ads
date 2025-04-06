@@ -18,44 +18,163 @@ typedef struct {
     int userId;
     char title[MAX_STR];
     char content[MAX_STR];
-    char type[MAX_STR];  // "Picture" or "Video"
+    char type[MAX_STR]; 
     int likes;
 } Post;
+
+typedef struct {
+    int commentId;
+    int postId;
+    int commenterId;
+    char text[256];
+} Comment;
+
+#define MAX_COMMENTS 100
+
+int getLastCommentID(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) return 0;
+
+    int lastID = 0;
+    while (fscanf(file, "%d|%*d|%*d|%*[^\n]\n", &lastID) != EOF);
+    fclose(file);
+    return lastID;
+}
+
+void addCommentToFile(const char *filename, int postId, int commenterId) {
+    FILE *file = fopen(filename, "a");
+    if (!file) {
+        printf("Error opening comment file!\n");
+        return;
+    }
+
+    Comment newComment;
+    newComment.commentId = getLastCommentID(filename) + 1;
+    newComment.postId = postId;
+    newComment.commenterId = commenterId;
+
+    printf("Enter your comment: ");
+    fgets(newComment.text, sizeof(newComment.text), stdin);
+    newComment.text[strcspn(newComment.text, "\n")] = '\0';
+
+    fprintf(file, "%d|%d|%d|%s\n", newComment.commentId, newComment.postId, newComment.commenterId, newComment.text);
+    fclose(file);
+
+    printf("\n✅ Comment added successfully!\n");
+}
+
+void viewCommentsForPost(const char *filename, int postId) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        return;
+    }
+
+    Comment c;
+    printf("\n📌 Comments for Post ID %d:\n", postId);
+    int found = 0;
+    while (fscanf(file, "%d|%d|%d|%255[^\n]\n", &c.commentId, &c.postId, &c.commenterId, c.text) == 4) {
+        if (c.postId == postId) {
+            printf("   - [User %d]: %s\n", c.commenterId, c.text);
+            found = 1;
+        }
+    }
+    if (!found) {
+        printf("   No comments yet.\n");
+    }
+
+    fclose(file);
+}
+
+void viewPostsWithComments(const char *postFilename, const char *commentFilename, int userId) {
+    FILE *file = fopen(postFilename, "r");
+    if (!file) {
+        printf("❌ No posts found!\n");
+        return;
+    }
+
+    Post post;
+    printf("\n=====================================\n");
+    printf("          Your Posts & Comments       \n");
+    printf("=====================================\n");
+    while (fscanf(file, "%d|%d|%99[^|]|%99[^|]|%99[^|]|%d\n", &post.postId, &post.userId,
+                  post.title, post.content, post.type, &post.likes) == 6) {
+        if (post.userId == userId) {
+            printf(" 🆔 ID: %d\n 📌 Title: %s\n 🎞️ Type: %s\n ✏️ Content: %s\n ❤️ Likes: %d\n",
+                   post.postId, post.title, post.type, post.content, post.likes);
+            viewCommentsForPost(commentFilename, post.postId);
+            printf("-------------------------------------\n");
+        }
+    }
+    fclose(file);
+}
+
+void deleteCommentsByPostId(const char *filename, int postIdToDelete) {
+    FILE *file = fopen(filename, "r");
+    if (!file) return;
+
+    FILE *temp = fopen("temp_comments.txt", "w");
+    if (!temp) {
+        fclose(file);
+        return;
+    }
+
+    Comment c;
+    while (fscanf(file, "%d|%d|%d|%255[^\n]\n", &c.commentId, &c.postId, &c.commenterId, c.text) == 4) {
+        if (c.postId != postIdToDelete) {
+            fprintf(temp, "%d|%d|%d|%s\n", c.commentId, c.postId, c.commenterId, c.text);
+        }
+    }
+
+    fclose(file);
+    fclose(temp);
+    remove(filename);
+    rename("temp_comments.txt", filename);
+}
 
 // Function to get the last User ID from file
 int getLastUserID(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) return 0;
 
-    int lastID = 0;
-    while (fscanf(file, "%d | %*s | %*s | %*s\n", &lastID) != EOF);
+    int id, maxId = 0;
+    char dummy1[100], dummy2[100], dummy3[100];
+
+    while (fscanf(file, "%d|%99[^|]|%99[^|]|%99[^\n]\n", &id, dummy1, dummy2, dummy3) == 4) {
+        if (id > maxId) maxId = id;
+    }
+
     fclose(file);
-    return lastID;
+    return maxId;
 }
 
-// Function to get the last Post ID from file
 int getLastPostID(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) return 0;
 
     int lastID = 0;
-    while (fscanf(file, "%d | %*d | %*s | %*s | %*s\n", &lastID) != EOF);
+    while (fscanf(file, "%d|%*d|%*s|%*s|%*s\n", &lastID) != EOF);
     fclose(file);
     return lastID;
 }
 
 // Function to register a new user
 void registerUser(const char *filename) {
-    FILE *file = fopen(filename, "a");
+    FILE *file = fopen(filename, "r");
     if (!file) {
-        printf("Error opening file!\n");
-        return;
+        printf("Couldn't read users, creating a new file...\n");
     }
+
+    char lines[100][200]; 
+    int count = 0;
+
+    while (file && fgets(lines[count], sizeof(lines[count]), file)) {
+        count++;
+    }
+    if (file) fclose(file);
 
     User *newUser = (User *)malloc(sizeof(User));
     if (!newUser) {
         printf("Memory allocation failed!\n");
-        fclose(file);
         return;
     }
 
@@ -70,14 +189,25 @@ void registerUser(const char *filename) {
     scanf(" %99s", newUser->email);
 
     newUser->id = getLastUserID(filename) + 1;
-    fprintf(file, "%d | %s | %s | %s\n", newUser->id, newUser->username, newUser->password, newUser->email);
-    fclose(file);
 
-    printf("\n✅User registered successfully! ID: %d\n", newUser->id);
-    free(newUser); // Free allocated memory
+    file = fopen(filename, "w");
+    if (!file) {
+        printf("Error writing file!\n");
+        free(newUser);
+        return;
+    }
+
+    fprintf(file, "%d|%s|%s|%s\n", newUser->id, newUser->username, newUser->password, newUser->email);
+
+    for (int i = 0; i < count; i++) {
+        fputs(lines[i], file);
+    }
+
+    fclose(file);
+    printf("\n✅ User registered successfully! ID: %d\n", newUser->id);
+    free(newUser);
 }
 
-// Function to login a user
 int loginUser(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -94,31 +224,30 @@ int loginUser(const char *filename) {
     printf("Enter Password: ");
     scanf(" %99s", password);
     
-    // Flush input buffer
     while (getchar() != '\n');  
 
     User userArray[MAX_USERS];
     int userCount = 0;
 
-    while (fscanf(file, "%d | %99s | %99s | %99s\n", &userArray[userCount].id, userArray[userCount].username,
-                  userArray[userCount].password, userArray[userCount].email) != EOF) {
+    while (fscanf(file, "%d|%99[^|]|%99[^|]|%99[^\n]\n",
+                &userArray[userCount].id,
+                userArray[userCount].username,
+                userArray[userCount].password,
+                userArray[userCount].email) == 4) {
         if (strcmp(userArray[userCount].username, username) == 0 &&
             strcmp(userArray[userCount].password, password) == 0) {
-            printf("\n✅Login Successful! Welcome, %s (ID: %d)\n", userArray[userCount].username, userArray[userCount].id);
+            printf("\n✅ Login Successful! Welcome, %s (ID: %d)\n", userArray[userCount].username, userArray[userCount].id);
             fclose(file);
-            return userArray[userCount].id;  // Return the logged-in user ID
-        }
+            return userArray[userCount].id;
+            }
         userCount++;
     }
+
 
     fclose(file);
     printf("\n❌ Invalid login. Please try again.\n");
     return -1;
 }
-
-
-// Function to create a new post
-// Function to create a new post
 
 void createPost(const char *filename, int userId) {
     if (userId == -1) {
@@ -175,72 +304,72 @@ void createPost(const char *filename, int userId) {
 
     printf("Enter Post Title: ");
     fgets(newPost->title, sizeof(newPost->title), stdin);
-    newPost->title[strcspn(newPost->title, "\n")] = '\0';  // Remove newline
+    newPost->title[strcspn(newPost->title, "\n")] = '\0';
 
     printf("Enter Post Content: ");
     fgets(newPost->content, sizeof(newPost->content), stdin);
-    newPost->content[strcspn(newPost->content, "\n")] = '\0';  // Remove newline
+    newPost->content[strcspn(newPost->content, "\n")] = '\0';
 
     // Append file extension
     strcat(newPost->content, (typeChoice == 1) ? ".png" : ".mp4");
 
-    fprintf(file, "%d | %d | %s | %s | %s | %d\n", newPost->postId, newPost->userId, newPost->title, newPost->content, newPost->type, 0);
+    fprintf(file, "%d|%d|%s|%s|%s|%d\n", newPost->postId, newPost->userId, newPost->title, newPost->content, newPost->type, 0);
     fclose(file);
 
     printf("\n✅ Post created successfully! Post ID: %d\n", newPost->postId);
     free(newPost);
 }
 
-
-// Function to view all posts of the logged-in user
-void viewPosts(const char *filename, int userId) {
+void viewPosts(const char *postFilename, const char *commentFilename, int userId) {
     if (userId == -1) {
         printf("You must be logged in to view posts.\n");
         return;
     }
 
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(postFilename, "r");
     if (!file) {
         printf("❌ No posts found!\n");
         return;
     }
 
-    Post postArray[MAX_POSTS];
-    int postCount = 0;
-
+    Post post;
     printf("\n=====================================\n");
     printf("              Your Posts             \n");
     printf("=====================================\n");
-    while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^\n]\n", &postArray[postCount].postId, &postArray[postCount].userId,
-                    postArray[postCount].title, postArray[postCount].content, postArray[postCount].type) != EOF) {
-                    if (postArray[postCount].userId == userId) {
-                        printf(" 🆔 ID: %d\n", postArray[postCount].postId);
-                        printf(" 📌 Title: %s\n", postArray[postCount].title);
-                        printf(" 🎞️ Type: %s\n", postArray[postCount].type);
-                        printf(" ✏️ Content: %s\n", postArray[postCount].content);
-                        printf("-------------------------------------\n");
-                    }
-        postCount++;
+    while (fscanf(file, "%d|%d|%99[^|]|%99[^|]|%99[^\n]\n",
+                  &post.postId, &post.userId, post.title, post.content, post.type) == 5) {
+        if (post.userId == userId) {
+            printf(" 🆔 ID: %d\n", post.postId);
+            printf(" 📌 Title: %s\n", post.title);
+            printf(" 🎞️ Type: %s\n", post.type);
+            printf(" ✏️ Content: %s\n", post.content);
+
+            viewCommentsForPost(commentFilename, post.postId);
+
+            printf("-------------------------------------\n");
+        }
     }
 
     fclose(file);
 }
 
-void deletePost(Post posts[], int *postCount, int userId) {
+
+void deletePost(Post posts[], int *postCount, int userId, const char *commentFilename) {
     int postId;
     printf("Enter the Post ID to delete: ");
     scanf("%d", &postId);
+    getchar(); 
 
     int found = 0;
     for (int i = 0; i < *postCount; i++) {
         if (posts[i].postId == postId && posts[i].userId == userId) {
-            // Shift all posts after i one step back
             for (int j = i; j < *postCount - 1; j++) {
                 posts[j] = posts[j + 1];
             }
             (*postCount)--;
+            deleteCommentsByPostId(commentFilename, postId);
             found = 1;
-            printf("🗑️ Post ID %d deleted successfully.\n", postId);
+            printf("🗑️ Post ID %d and its comments deleted successfully.\n", postId);
             break;
         }
     }
@@ -270,7 +399,6 @@ void likePost(Post posts[], int postCount) {
     }
 }
 
-
 void savePostsToFile(const char *filename, Post posts[], int postCount) {
     FILE *file = fopen(filename, "w");
     if (!file) {
@@ -279,7 +407,7 @@ void savePostsToFile(const char *filename, Post posts[], int postCount) {
     }
 
     for (int i = 0; i < postCount; i++) {
-        fprintf(file, "%d | %d | %s | %s | %s | %d\n",
+        fprintf(file, "%d|%d|%s|%s|%s|%d\n",
                 posts[i].postId, posts[i].userId, posts[i].title,
                 posts[i].content, posts[i].type, posts[i].likes);
     }
@@ -295,7 +423,7 @@ int loadPostsFromFile(const char *filename, Post posts[]) {
     }
 
     int count = 0;
-    while (fscanf(file, "%d | %d | %99[^|] | %99[^|] | %99[^|] | %d\n",
+    while (fscanf(file, "%d|%d|%99[^|]|%99[^|]|%99[^|]|%d\n",
                   &posts[count].postId,
                   &posts[count].userId,
                   posts[count].title,
@@ -309,21 +437,18 @@ int loadPostsFromFile(const char *filename, Post posts[]) {
     return count;
 }
 
-
-
 void logout(int *userId) {
     printf("Logging out...\n");
-    *userId = -1;  // Reset user ID to indicate no user is logged in
+    *userId = -1; 
 }
-
 
 // Main function
 int main() {
     int choice;
-    int userId = -1;  // No user is logged in at the start
+    int userId = -1; 
 
-    Post posts[MAX_POSTS];  // Declare posts array
-    int postCount = 0;      // Initialize post count
+    Post posts[MAX_POSTS]; 
+    int postCount = 0;      
 
     while (1) {
         if (userId == -1) {
@@ -337,7 +462,6 @@ int main() {
             printf("> ");
             scanf("%d", &choice);
             
-            // Flush input buffer
             while (getchar() != '\n');
 
             switch (choice) {
@@ -355,33 +479,44 @@ int main() {
             }
         } else {
             printf("\n=== User Menu ===\n");
-            printf("1. Create Post\n2. View Posts\n3. Like Post\n4. Delete Post\n5. Logout\nChoose an option: ");
+            printf("1. Create Post\n");
+            printf("2. View Posts\n");
+            printf("3. Like Post\n");
+            printf("4. Delete Post\n");
+            printf("5. Comment on Post\n");
+            printf("6. Logout\n");
+            printf("Enter your choice: ");
             scanf("%d", &choice);
             
-            // Flush input buffer
             while (getchar() != '\n');
 
             switch (choice) {
                 case 1:
                     createPost("posts.txt", userId);
-                    // Reload posts from file to memory
                     postCount = loadPostsFromFile("posts.txt", posts);
                     break;
                 case 2:
-                    viewPosts("posts.txt", userId);
+                    viewPostsWithComments("posts.txt", "comments.txt", userId);
                     break;
                 case 3:
-                    postCount = loadPostsFromFile("posts.txt", posts);  // Load latest
+                    postCount = loadPostsFromFile("posts.txt", posts);
                     likePost(posts, postCount);
-                    savePostsToFile("posts.txt", posts, postCount);     // Save updated
+                    savePostsToFile("posts.txt", posts, postCount);
                     break;
                 case 4:
-                    postCount = loadPostsFromFile("posts.txt", posts);  // Load latest
-                    deletePost(posts, &postCount, userId);
-                    savePostsToFile("posts.txt", posts, postCount);     // Save updated
+                    postCount = loadPostsFromFile("posts.txt", posts);
+                    deletePost(posts, &postCount, userId, "comments.txt"); 
+                    savePostsToFile("posts.txt", posts, postCount);
                     break;
                 case 5:
-                    logout(&userId);
+                    printf("Enter Post ID to comment on: ");
+                    int targetPostId;
+                    scanf("%d", &targetPostId);
+                    getchar(); 
+                    addCommentToFile("comments.txt", targetPostId, userId);
+                    break;
+                case 6:
+                    userId = -1;
                     break;
                 default:
                     printf("Invalid choice! Try again.\n");

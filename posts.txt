@@ -1,0 +1,2 @@
+1|1|halo|semua.png|Picture|2
+2|2|aaaa|hali.mp4|Video|0
